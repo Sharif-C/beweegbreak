@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaarten-beweegbreak</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+:root {
+  --board: #F3F6F7;
+  --board-edge: #C9D3D6;
+  --ink: #1D3557;
+  --ink-soft: #4A5F7A;
+  --btn: #1D3557;
+  --btn-ink: #FFFFFF;
+  --red: #E0352B;
+  --blue: #1F6FD6;
+  --green: #2A9D4E;
+  --yellow: #F2B705;
+  --special: #20232A;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --board: #1E3A32;
+    --board-edge: #5B3A22;
+    --ink: #F2F0E6;
+    --ink-soft: #BFD0C8;
+    --btn: #F2F0E6;
+    --btn-ink: #1E3A32;
+    --special: #111317;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --board: #1E3A32;
+  --board-edge: #5B3A22;
+  --ink: #F2F0E6;
+  --ink-soft: #BFD0C8;
+  --btn: #F2F0E6;
+  --btn-ink: #1E3A32;
+  --special: #111317;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--board);
+  color: var(--ink);
+  font-family: "Patrick Hand", "Comic Sans MS", "Segoe Print", cursive;
+  font-size: 1.25rem;
+  line-height: 1.4;
+  border: 10px solid var(--board-edge);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+main {
+  width: 100%;
+  max-width: 40rem;
+  padding: 1.5rem 1.25rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+}
+h1 {
+  font-family: "Baloo 2", "Arial Rounded MT Bold", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1.05;
+  margin: .5rem 0 .25rem;
+}
+p { margin: .25rem 0; color: var(--ink-soft); }
+.screen { display: none; width: 100%; flex-direction: column; align-items: center; }
+.screen.active { display: flex; }
+
+/* legend */
+.legend {
+  list-style: none; padding: 0; margin: 1.5rem 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; width: 100%;
+}
+.legend li {
+  display: flex; align-items: center; gap: .6rem;
+  text-align: left; font-size: 1.15rem;
+}
+.chip {
+  flex: none; width: 2rem; height: 2.8rem; border-radius: .4rem;
+  border: 3px solid #fff; box-shadow: 0 0 0 2px var(--ink-soft);
+}
+.chip.red { background: var(--red); }
+.chip.blue { background: var(--blue); }
+.chip.green { background: var(--green); }
+.chip.yellow { background: var(--yellow); }
+.chip.special {
+  background: conic-gradient(var(--red) 0 25%, var(--blue) 0 50%, var(--green) 0 75%, var(--yellow) 0);
+}
+
+.choose { margin: .5rem 0 1.25rem; }
+.choose-row { display: flex; gap: .5rem; justify-content: center; margin-top: .4rem; }
+.pill {
+  font: inherit; font-size: 1.2rem;
+  padding: .35rem 1rem; border-radius: 2rem;
+  border: 2px solid var(--ink); background: transparent; color: var(--ink);
+  cursor: pointer;
+}
+.pill[aria-pressed="true"] { background: var(--ink); color: var(--board); }
+
+.big-btn {
+  font-family: "Baloo 2", system-ui, sans-serif; font-weight: 800;
+  font-size: 1.5rem;
+  padding: .7rem 2.2rem; border-radius: 1rem;
+  border: none; background: var(--btn); color: var(--btn-ink);
+  cursor: pointer; margin-top: 1rem;
+  box-shadow: 0 5px 0 var(--ink-soft);
+}
+.big-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--ink-soft); }
+button:focus-visible { outline: 3px dashed var(--yellow); outline-offset: 4px; }
+
+/* countdown */
+.count {
+  font-family: "Baloo 2", system-ui, sans-serif; font-weight: 800;
+  font-size: clamp(8rem, 30vw, 14rem); line-height: 1; margin-top: 2rem;
+}
+
+/* game */
+.status {
+  display: flex; justify-content: space-between; width: 100%;
+  font-size: 1.3rem; margin-bottom: 1rem;
+}
+.dots { display: flex; gap: .3rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1rem; }
+.dot { width: .8rem; height: .8rem; border-radius: 50%; border: 2px solid var(--ink-soft); }
+.dot.done { background: var(--ink); border-color: var(--ink); }
+
+.card-wrap { perspective: 900px; }
+.card {
+  width: min(16rem, 70vw);
+  aspect-ratio: 5 / 7.5;
+  border-radius: 1.2rem;
+  border: .55rem solid #fff;
+  box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 14px 28px rgba(0,0,0,.25);
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #fff;
+  font-family: "Baloo 2", system-ui, sans-serif;
+}
+.card.flip { animation: flip .45s ease-out; }
+@keyframes flip {
+  0% { transform: rotateY(90deg) scale(.9); }
+  100% { transform: rotateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .card.flip { animation: none; } }
+.card.red { background: var(--red); }
+.card.blue { background: var(--blue); }
+.card.green { background: var(--green); }
+.card.yellow { background: var(--yellow); color: #2B2100; }
+.card.special { background: var(--special); }
+.card .corner {
+  position: absolute; font-weight: 800; font-size: 1.8rem; line-height: 1;
+}
+.card .tl { top: .6rem; left: .8rem; }
+.card .br { bottom: .6rem; right: .8rem; transform: rotate(180deg); }
+.card .num { font-weight: 800; font-size: clamp(6rem, 24vw, 8.5rem); line-height: .9; }
+.card .stripe {
+  width: 70%; height: .7rem; border-radius: 1rem; margin-bottom: 1rem;
+  background: linear-gradient(90deg, var(--red) 0 25%, var(--blue) 25% 50%, var(--green) 50% 75%, var(--yellow) 75%);
+}
+.card .bolt { font-size: 4.5rem; line-height: 1; }
+.task {
+  font-family: "Baloo 2", system-ui, sans-serif; font-weight: 800;
+  font-size: clamp(1.8rem, 6vw, 2.4rem); line-height: 1.1;
+  margin: 1.25rem 0 .2rem;
+}
+.hint { font-size: 1.15rem; }
+
+/* end */
+.finish-emoji { font-size: 5rem; line-height: 1; margin-top: 1.5rem; }
+.time-big {
+  font-family: "Baloo 2", system-ui, sans-serif; font-weight: 800;
+  font-size: 3rem; line-height: 1; margin: .5rem 0;
+}
+@media (max-width: 30rem) {
+  body { border-width: 6px; }
+  .legend { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<main>
+
+  <section id="start" class="screen active" aria-labelledby="t1">
+    <h1 id="t1">Kaarten-beweegbreak</h1>
+    <p>Trek een kaart, doe de oefening samen met je maatje en klik op “Gedaan”.</p>
+
+    <ul class="legend">
+      <li><span class="chip red"></span>Rood: squats</li>
+      <li><span class="chip blue"></span>Blauw: jumping jacks</li>
+      <li><span class="chip green"></span>Groen: lunges per been</li>
+      <li><span class="chip yellow"></span>Geel: knieheffen per been</li>
+      <li><span class="chip special"></span>Speciale kaart: 4 burpees</li>
+    </ul>
+    <p>Het getal op de kaart is hoe vaak je het doet.</p>
+
+    <div class="choose">
+      <p>Hoeveel kaarten moeten jullie halen?</p>
+      <div class="choose-row" role="group" aria-label="Aantal kaarten">
+        <button class="pill" data-n="5" aria-pressed="false">5</button>
+        <button class="pill" data-n="10" aria-pressed="true">10</button>
+        <button class="pill" data-n="15" aria-pressed="false">15</button>
+      </div>
+    </div>
+
+    <button class="big-btn" id="startBtn">Start</button>
+  </section>
+
+  <section id="countdown" class="screen" aria-live="assertive">
+    <p>Klaar voor de start…</p>
+    <div class="count" id="countNum">3</div>
+  </section>
+
+  <section id="game" class="screen">
+    <div class="status">
+      <span id="cardCount">Kaart 1 van 10</span>
+      <span id="timer">0:00</span>
+    </div>
+    <div class="dots" id="dots" aria-hidden="true"></div>
+    <div class="card-wrap">
+      <div class="card" id="card" aria-hidden="true"></div>
+    </div>
+    <div class="task" id="task" aria-live="polite"></div>
+    <p class="hint" id="hint"></p>
+    <button class="big-btn" id="nextBtn">Gedaan!</button>
+  </section>
+
+  <section id="end" class="screen" aria-live="polite">
+    <div class="finish-emoji">🙌</div>
+    <h1>Klaar!</h1>
+    <p>Steek allebei je handen in de lucht, zodat de juf of meester het ziet.</p>
+    <div class="time-big" id="endTime">0:00</div>
+    <p>jullie tijd</p>
+    <button class="big-btn" id="againBtn">Opnieuw spelen</button>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  var COLORS = {
+    red:    { name: "squats",          hint: "Billen naar achteren, rug recht." },
+    blue:   { name: "jumping jacks",   hint: "Armen en benen tegelijk wijd." },
+    green:  { name: "lunges per been", hint: "Grote stap naar voren, knie bijna op de grond." },
+    yellow: { name: "knieheffen per been", hint: "Knieën hoog, op de plek." }
+  };
+  var COLOR_KEYS = Object.keys(COLORS);
+  var SPECIAL_CHANCE = 0.2;
+
+  var goal = 10, done = 0, startTime = 0, tick = null, last = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function show(id) {
+    document.querySelectorAll(".screen").forEach(function (s) {
+      s.classList.toggle("active", s.id === id);
+    });
+  }
+
+  document.querySelectorAll(".pill").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll(".pill").forEach(function (o) { o.setAttribute("aria-pressed", "false"); });
+      b.setAttribute("aria-pressed", "true");
+      goal = parseInt(b.dataset.n, 10);
+    });
+  });
+
+  function fmt(ms) {
+    var s = Math.floor(ms / 1000);
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  }
+
+  function drawCard() {
+    var c;
+    do {
+      if (Math.random() < SPECIAL_CHANCE) c = { special: true };
+      else c = {
+        color: COLOR_KEYS[Math.floor(Math.random() * 4)],
+        n: 1 + Math.floor(Math.random() * 9)
+      };
+    } while (last && JSON.stringify(c) === JSON.stringify(last));
+    last = c;
+    return c;
+  }
+
+  function renderDots() {
+    var d = $("dots"); d.innerHTML = "";
+    for (var i = 0; i < goal; i++) {
+      var dot = document.createElement("span");
+      dot.className = "dot" + (i < done ? " done" : "");
+      d.appendChild(dot);
+    }
+  }
+
+  function showCard() {
+    var c = drawCard();
+    var card = $("card");
+    card.className = "card";
+    void card.offsetWidth;
+    if (c.special) {
+      card.classList.add("special", "flip");
+      card.innerHTML = '<span class="corner tl">⚡</span><div class="stripe"></div><div class="bolt">⚡</div><span class="corner br">⚡</span>';
+      $("task").textContent = "4 burpees";
+      $("hint").textContent = "Te zwaar? Doe ze zonder sprongetje.";
+    } else {
+      card.classList.add(c.color, "flip");
+      card.innerHTML = '<span class="corner tl">' + c.n + '</span><div class="num">' + c.n + '</div><span class="corner br">' + c.n + '</span>';
+      $("task").textContent = c.n + " " + COLORS[c.color].name;
+      $("hint").textContent = COLORS[c.color].hint;
+    }
+    $("cardCount").textContent = "Kaart " + (done + 1) + " van " + goal;
+    renderDots();
+  }
+
+  function startGame() {
+    done = 0; last = null;
+    show("countdown");
+    var n = 3; $("countNum").textContent = n;
+    var cd = setInterval(function () {
+      n--;
+      if (n > 0) { $("countNum").textContent = n; return; }
+      clearInterval(cd);
+      show("game");
+      startTime = Date.now();
+      $("timer").textContent = "0:00";
+      tick = setInterval(function () { $("timer").textContent = fmt(Date.now() - startTime); }, 250);
+      showCard();
+      $("nextBtn").focus();
+    }, 1000);
+  }
+
+  function next() {
+    done++;
+    if (done >= goal) {
+      clearInterval(tick);
+      $("endTime").textContent = fmt(Date.now() - startTime);
+      show("end");
+      $("againBtn").focus();
+      return;
+    }
+    showCard();
+  }
+
+  $("startBtn").addEventListener("click", startGame);
+  $("nextBtn").addEventListener("click", next);
+  $("againBtn").addEventListener("click", function () { show("start"); });
+})();
+</script>
+</body>
+</html>
